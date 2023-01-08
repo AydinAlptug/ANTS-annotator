@@ -36,22 +36,22 @@ class Visualization(object):
     def draw_groundtruth(self, track_ids, boxes):
         for track_id, box in zip(track_ids, boxes):
             self.viewer.color = create_unique_color_uchar(track_id)
-            self.viewer.rectangle(*box.astype(np.int), label=str(track_id))
+            self.viewer.rectangle(*box.astype(int), label=str(track_id))
 
     def draw_centors(self, results, frame_idx):
-        mask = results[:, 0].astype(np.int) <= frame_idx
-        frame_track_ids = results[mask, 1].astype(np.int)
-        boxes = results[mask, 2:6].astype(np.int)
+        mask = results[:, 0].astype(int) <= frame_idx
+        frame_track_ids = results[mask, 1].astype(int)
+        boxes = results[mask, 2:6].astype(int)
         centors_x = (boxes[:, 0] + boxes[:, 2] / 2)
         centors_y = (boxes[:, 1] + boxes[:, 3] / 2)
-        ids_centors = np.column_stack((results[mask, 0].astype(np.int), results[mask, 1].astype(np.int),
+        ids_centors = np.column_stack((results[mask, 0].astype(int), results[mask, 1].astype(int),
                                        centors_x, centors_y))
         id_max = max(frame_track_ids)
 
         for i in range(1, id_max+1):
             id_mark = ids_centors[:, 1] == i
 
-            frame_id_centors = ids_centors[id_mark, :].astype(np.int)
+            frame_id_centors = ids_centors[id_mark, :].astype(int)
             if len(frame_id_centors) == 0:
                 continue
             # if max(frame_id_centors[:, 0]) < frame_idx - 30:  # 轨迹被删除，则不显示
@@ -357,8 +357,8 @@ def run(sequence_dir,
 
         vis.set_image(image.copy())
 
-        mask = groundtruth[:, 0].astype(np.int) == frame_idx
-        track_ids = groundtruth[mask, 1].astype(np.int)
+        mask = groundtruth[:, 0].astype(int) == frame_idx
+        track_ids = groundtruth[mask, 1].astype(int)
         boxes = groundtruth[mask, 2:6]
 
         vis.draw_groundtruth(track_ids, boxes)

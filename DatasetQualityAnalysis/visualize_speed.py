@@ -93,6 +93,7 @@ def show_heatmap(v, image_height, cm_unit=100):
     cb.ax.tick_params(labelsize=fs)
     cb.set_label('Speed (cm/s)', fontsize=fs+7)
 
+    plt.show()
     plt.savefig(args.save_fig_dir+'/heatmap_' +
                 args.scene+'.jpg', dpi=300, bbox_inches="tight")
     plt.close()
@@ -122,6 +123,7 @@ def show_histogram(v, cm_unit=100):
 
     # plt.title('Frequency of Speed', y=-0.3)
 
+    plt.show()
     plt.savefig(args.save_fig_dir+'/histogram_' +
                 args.scene+'.jpg', dpi=300, bbox_inches="tight")
     plt.close()

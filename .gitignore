@@ -1,3 +1,12 @@
+
+# Locally required files / directories
+OutdoorDataset/
+IndoorDataset/
+ANTS_annotator/v1/notes.txt
+DatasetQualityAnalysis/figures/video
+
+*.mp4
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
