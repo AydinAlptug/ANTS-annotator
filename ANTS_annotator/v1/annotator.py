@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, QPoint, QRect, QSize
 
 from window_2 import Ui_MainWindow
 
+import constants
 
 class Annotator(QMainWindow):
     screenChanged = QtCore.pyqtSignal(QScreen, QScreen)
@@ -28,6 +29,11 @@ class Annotator(QMainWindow):
         self.source_path = ""
         self.target_path = ""
         self.images = []
+        self.annotated_images_in_cache = set()
+        self.scale_x = 1
+        self.scale_y = 1
+        self.x_0 = 0
+        self.y_0 = 0
         self.current_image_index = 0
 
         self.rubberBandList = []
@@ -56,6 +62,8 @@ class Annotator(QMainWindow):
         self.ui.pushButton_4.keyPressEvent = self.keyPressEvent
 
         self.ui.pushButton_5.clicked.connect(self.listFrames)
+        self.label_max_width = self.ui.label.size().width()
+        self.label_max_height = self.ui.label.size().height()
 
         self.showMaximized()
 
@@ -99,12 +107,24 @@ class Annotator(QMainWindow):
     def listFrames(self):
         pass
 
-    def showImage(self, p=None, remain='', name=''):
-        if p is None:
-            p = self.get_current_image_path()
-        pixmap = QPixmap(p)
+    def showImage(self, path=None, remain='', name=''):
+        if path is None:
+            if(self.current_image_index in self.annotated_images_in_cache):
+                path = f'runtime_cache\\with_bbox_{self.current_image_index}.png'
+            else:
+                path = self.get_current_image_path()
+        pixmap = QPixmap(path)
         scaledPix = pixmap.scaled(self.ui.label.size(), Qt.KeepAspectRatio, transformMode=Qt.SmoothTransformation)
         self.ui.label.setPixmap(scaledPix)
+        self.ui.label.setStyleSheet("border: 1px solid black;")
+        self.ui.label.setFixedSize(scaledPix.width(), scaledPix.height())
+
+        self.scale_x = self.ui.label.size().width()
+        self.scale_y = self.ui.label.size().height()
+
+        self.x_0 = (self.label_max_width - scaledPix.width()) / 2
+        self.y_0 = self.ui.label.y()
+
 
     def updateInfo(self):
         self.ui.label_2.setText("Frame: "
@@ -147,6 +167,8 @@ class Annotator(QMainWindow):
 
         self.ui.horizontalLayout_8.setContentsMargins(-1, -1, -1, self.height() * 0.65)
         self.ui.label.setFixedSize(self.width(), self.height() * 0.65)
+        self.label_max_width = self.ui.label.size().width()
+        self.label_max_height = self.ui.label.size().height()
 
     def moveEvent(self, event):
         oldScreen = QtWidgets.QApplication.screenAt(event.oldPos())
@@ -220,11 +242,18 @@ class Annotator(QMainWindow):
                 return True
         return False
 
+    def read_image(self):
+        if(self.current_image_index in self.annotated_images_in_cache):
+            path = f'runtime_cache\\with_bbox_{self.current_image_index}.png'
+        else:
+            path = self.source_path + self.images[self.current_image_index]
+        img_raw = cv2.imread(path)
+        return img_raw
+
     def transform(self, roi):
-        # 00 0h
-        # w0 wh
-        p = self.source_path + self.images[self.current_image_index]
-        img_raw = cv2.imread(p)
+        # 0,0 0,h
+        # w,0 w,h
+        img_raw = self.read_image()
         h, w, c = img_raw.shape
         print("R", roi)
         roi = [0 if x < 0 else x for x in roi]
@@ -233,7 +262,30 @@ class Annotator(QMainWindow):
         if roi[0] > w and roi[1] > h:
             roi[0] = w
             roi[1] = h
+
+        if roi[2] == roi[3] == 0:
+            x1, x2, y1, y2 = self.scaleSelectionToAnnotate(h, roi, w)
+            self.drawBBoxAndCacheImage(img_raw, x1, x2, y1, y2)
+            self.showImage()
+
         return roi
+
+    def scaleSelectionToAnnotate(self, h, roi, w):
+        half_x = constants.BBOX_SHAPE[0] / 2
+        half_y = constants.BBOX_SHAPE[1] / 2
+        scale_ratio_x = w / self.scale_x
+        scale_ratio_y = h / self.scale_y
+        x1 = int(((roi[0] - self.x_0) * scale_ratio_x) - half_x)  # -  half_x
+        x2 = int(((roi[0] - self.x_0 + roi[2]) * scale_ratio_x) + half_x)
+        y1 = int(((roi[1] - self.y_0) * scale_ratio_y) - half_y)
+        y2 = int(((roi[1] - self.y_0 + roi[3]) * scale_ratio_y) + half_y)
+        return x1, x2, y1, y2
+
+    def drawBBoxAndCacheImage(self, img_raw, x1, x2, y1, y2):
+        cv2.rectangle(img_raw, (x1, y1), (x2, y2), (0, 0, 255), 1)
+        cache_path = f'runtime_cache\\with_bbox_{self.current_image_index}.png'
+        cv2.imwrite(cache_path, img_raw)
+        self.annotated_images_in_cache.add(self.current_image_index)
 
     def mouseMoveEvent(self, event):
         if not (self.origin is None or self.origin.isNull()):
